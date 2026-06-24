@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="빌드온">
+<meta name="theme-color" content="#0f1729">
+<title>빌드온 — 발주·납기 추적</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%233b82f6'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+
+<!-- ========================================================= -->
+<!-- 🔥 FIREBASE 설정 (여기에 본인 키를 붙여넣으면 클라우드 연동됨) -->
+<!--    키가 비어있으면 이 기기에만 저장(localStorage)됩니다.       -->
+<!-- ========================================================= -->
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAFLRHhZi3wG0EhLCANyEuUlBev3VwIIIQ",
+  authDomain: "jajaecall.firebaseapp.com",
+  projectId: "jajaecall",
+  storageBucket: "jajaecall.firebasestorage.app",
+  messagingSenderId: "653879056602",
+  appId: "1:653879056602:web:46df8d0cc69ae0e1dfade3"
+};
+/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+   ★  고객사 코드 — 여기 한 줄만 바꿔서 배포하세요         ★
+   ★  같은 코드를 쓰는 사람끼리만 데이터를 공유합니다.        ★
+   ★  코드가 다르면 데이터가 완전히 분리됩니다 (서로 안 보임). ★
+   ★                                                          ★
+   ★  예시)                                                   ★
+   ★    블루인슈텍  →  "blueinsutec"                          ★
+   ★    대성하드웨어 →  "daesung"                             ★
+   ★    한성석고    →  "hansung"                             ★
+   ★                                                          ★
+   ★  ※ 영문 소문자/숫자만, 띄어쓰기·한글 금지                ★
+   ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+const TEAM_CODE = "eos";
+
+const CLIENT_NAME = "이오스종합건설";   // 화면 표시용 회사 이름 (자유롭게)
+</script>
+
+<style>
+  :root{
+    --bg:#0f1729; --bg2:#0a1020; --card:#172238; --card2:#1e2c46;
+    --line:#243352; --txt:#eaf1fb; --sub:#7d92b5;
+    --amber:#3b82f6; --amber-d:#2563eb;
+    --accent:#f5a623;
+    --green:#34d399; --red:#f87171; --blue:#5fa8ff; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    background:var(--bg);color:var(--txt);overscroll-behavior:none;
+  }
+  #app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);position:relative;}
+
+  /* 헤더 */
+  header{background:var(--bg2);padding:14px 16px 0;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:100;}
+  .brand{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
+  .brand .logo{width:32px;height:32px;border-radius:9px;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(59,130,246,.35);}
+  .brand h1{font-size:19px;margin:0;font-weight:800;letter-spacing:-.5px;}
+  .brand .who{font-size:11px;color:var(--sub);margin-left:auto;font-weight:600;text-align:right;line-height:1.4;}
+  .brand .who b{color:var(--amber);display:block;}
+
+  .role-tabs{display:flex;gap:8px;padding:10px 12px 4px;}
+  .role-tab{flex:1;text-align:center;padding:11px 0;font-size:16px;font-weight:800;color:var(--accent);border:2px solid var(--accent);border-radius:12px;cursor:pointer;transition:.15s;background:transparent;}
+  .role-tab.on{color:#fff;background:var(--amber);border-color:var(--accent);}
+  .role-tab.gear{color:var(--accent);border-color:var(--accent);flex:0 0 auto;}
+  .role-tab.gear:active{background:var(--amber);color:#fff;}
+
+  main{flex:1;padding:16px 16px 90px;}
+  .screen{display:none;}
+  .screen.on{display:block;}
+
+  /* 공통 카드 */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;}
+  .sec-title{font-size:13px;font-weight:800;color:var(--sub);margin:18px 2px 10px;letter-spacing:.3px;}
+  .sec-title:first-child{margin-top:0;}
+
+  /* 현장 선택 칩 */
+  .site-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:4px;padding-bottom:2px;}
+  .site-row::-webkit-scrollbar{display:none;}
+  .site-chip{flex-shrink:0;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 14px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;white-space:nowrap;transition:.15s;}
+  .site-chip.on{background:var(--amber);color:#fff;border-color:var(--amber);}
+  .site-chip.add{color:var(--amber);border-style:dashed;}
+
+  /* 요약 통계 */
+  .summary{display:flex;gap:8px;margin-bottom:14px;}
+  .sm{flex:1;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 8px;text-align:center;cursor:pointer;transition:.15s;}
+  .sm:active{transform:scale(.96);}
+  .sm.sel{border-color:var(--amber);background:#22324f;}
+  .sm .n{font-size:20px;font-weight:800;}
+  .sm.wait .n{color:var(--accent);}
+  .sm.soon .n{color:var(--blue);}
+  .sm.done .n{color:var(--green);}
+  .sm .l{font-size:10.5px;color:var(--sub);margin-top:3px;}
+
+  /* 발주 등록 폼 */
+  .field{margin-bottom:11px;}
+  .field label{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-bottom:6px;}
+  .field input,.field select,.field textarea{
+    width:100%;background:var(--card2);border:1px solid var(--line);border-radius:11px;
+    padding:13px;font-size:15px;color:var(--txt);font-family:inherit;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--amber);}
+  .field .row2{display:flex;gap:8px;}
+  .field .row2>*{flex:1;}
+  .mat-add{display:flex;gap:8px;}
+  .mat-add input{flex:1;}
+  .mini-btn{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:0 16px;color:var(--amber);font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap;}
+
+  .domyeon-btn{
+    width:100%;background:linear-gradient(135deg,#2a2350,#1e2545);border:1px solid var(--purple);
+    border-radius:11px;padding:11px;color:#c4b5ff;font-size:13px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:11px;
+  }
+
+  .btn{width:100%;border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:.15s;}
+  .btn-primary{background:var(--amber);color:#fff;box-shadow:0 4px 16px rgba(59,130,246,.3);}
+  .btn-primary:active{background:var(--amber-d);}
+  .btn-sm{padding:11px;font-size:13px;border-radius:10px;}
+  .btn-ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line);}
+  .btn-green{background:var(--green);color:#04130d;}
+
+  /* 발주 아이템 */
+  .order{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px;position:relative;overflow:hidden;}
+  .order::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
+  .order.st-wait::before{background:var(--accent);}
+  .order.st-confirmed::before{background:var(--blue);}
+  .order.st-done::before{background:var(--green);}
+  .order-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;}
+  .order-mat{font-size:15px;font-weight:800;flex:1;}
+  .order-mat small{display:block;color:var(--sub);font-weight:600;font-size:12px;margin-top:2px;}
+  .stt{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:7px;white-space:nowrap;flex-shrink:0;}
+  .stt.wait{background:#3d3115;color:var(--accent);}
+  .stt.confirmed{background:#16304a;color:var(--blue);}
+  .stt.done{background:#143020;color:var(--green);}
+  .order-info{display:flex;gap:14px;font-size:12px;color:var(--sub);border-top:1px solid var(--line);padding-top:9px;margin-top:2px;}
+  .order-info b{color:var(--txt);font-weight:700;}
+  .order-info .date b{color:var(--blue);}
+  .order-site{font-size:11px;color:var(--purple);font-weight:700;margin-top:6px;}
+  .order-actions{display:flex;gap:8px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
+  .oa-btn{flex:1;border-radius:9px;padding:9px 0;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;border:1px solid var(--line);background:var(--card2);transition:.12s;}
+  .oa-btn.edit{color:var(--blue);}
+  .oa-btn.del{color:var(--red);}
+  .oa-btn.del.confirm{background:var(--red);color:#fff;border-color:var(--red);}
+  .oa-btn:active{transform:scale(.97);}
+
+  /* 캘린더 */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .cal-head .mn{font-size:16px;font-weight:800;}
+  .cal-nav{display:flex;gap:6px;}
+  .cal-nav button{width:34px;height:34px;border-radius:9px;background:var(--card2);border:1px solid var(--line);color:var(--txt);font-size:16px;cursor:pointer;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-dow{text-align:center;font-size:11px;color:var(--sub);font-weight:700;padding:3px 0;}
+  .cal-dow.sun{color:var(--red);}.cal-dow.sat{color:var(--blue);}
+  .cal-cell{height:46px;background:var(--card2);border:1px solid transparent;border-radius:8px;padding:4px;font-size:12px;position:relative;cursor:pointer;transition:.1s;display:flex;flex-direction:column;}
+  .cal-cell.empty{background:transparent;border:none;cursor:default;}
+  .cal-cell.today{border-color:var(--amber);}
+  .cal-cell .dnum{font-weight:700;color:var(--sub);}
+  .cal-cell.has .dnum{color:var(--txt);}
+  .cal-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:auto;}
+  .dot{width:6px;height:6px;border-radius:50%;}
+  .dot.confirmed{background:var(--blue);}.dot.done{background:var(--green);}.dot.wait{background:var(--accent);}
+  .dot.sched{background:var(--purple);}
+  .cal-cell.sel{background:#22324f;border-color:var(--amber);}
+  .cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:11px;color:var(--sub);}
+  .cal-legend span{display:flex;align-items:center;gap:4px;}
+
+  .day-detail{margin-top:14px;}
+  .day-detail .dh{font-size:13px;font-weight:800;margin-bottom:8px;color:var(--amber);}
+  .day-empty{color:var(--sub);font-size:12.5px;text-align:center;padding:14px 0;}
+
+  /* 협력업체: 들어온 발주 */
+  .incoming{background:var(--card);border:1px solid var(--amber);border-radius:14px;padding:13px;margin-bottom:10px;}
+  .incoming.answered{border-color:var(--line);opacity:.92;}
+  .inc-top{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .inc-tag{font-size:10.5px;background:var(--amber);color:#fff;font-weight:800;padding:3px 8px;border-radius:7px;}
+  .inc-tag.done{background:var(--green);color:#04130d;}
+  .inc-time{font-size:11px;color:var(--sub);margin-left:auto;}
+  .inc-mat{font-size:15px;font-weight:800;}
+  .inc-meta{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.6;}
+  .inc-meta b{color:var(--txt);}
+  .inc-form{display:flex;gap:8px;margin-top:11px;align-items:center;}
+  .inc-form input[type=date]{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--txt);font-size:14px;font-family:inherit;}
+  .inc-answered-line{margin-top:10px;font-size:13px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);padding-top:10px;}
+
+  /* 문자 미리보기 모달 */
+  .modal-bg{position:fixed;inset:0;z-index:900;background:rgba(8,11,17,.84);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:24px;}
+  .modal-bg.on{display:flex;}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;width:100%;max-width:360px;animation:pop .25s ease;}
+  @keyframes pop{from{transform:scale(.92);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .modal h3{margin:0 0 4px;font-size:17px;font-weight:800;}
+  .modal .msub{font-size:12.5px;color:var(--sub);margin-bottom:16px;}
+  .sms-bubble{background:#1f3a2e;border:1px solid #2c5a45;border-radius:14px 14px 14px 4px;padding:13px;font-size:13.5px;line-height:1.65;color:#d6f5e6;white-space:pre-line;margin-bottom:8px;}
+  .sms-from{font-size:11px;color:var(--sub);margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+
+  .empty{text-align:center;padding:36px 0;color:var(--sub);font-size:13.5px;line-height:1.8;}
+  .empty .big{font-size:40px;margin-bottom:10px;}
+
+  /* 하단 네비 */
+  .botnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg2);border-top:1px solid var(--line);display:flex;gap:8px;z-index:100;padding:8px 12px calc(8px + env(safe-area-inset-bottom));}
+  .botnav button{flex:1;background:transparent;border:2px solid var(--accent);border-radius:12px;color:var(--accent);font-size:14px;font-weight:800;padding:9px 0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit;}
+  .botnav button .ic{font-size:20px;}
+  .botnav button.on{color:#fff;background:var(--amber);border-color:var(--accent);}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:950;background:var(--card2);color:var(--txt);padding:13px 20px;border-radius:13px;font-size:13px;font-weight:700;border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;max-width:90%;}
+  .toast.on{opacity:1;bottom:110px;}
+  .hidden{display:none!important;}
+  .tab-pane{display:none;}
+  .tab-pane.on{display:block;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="logo">📦</div>
+      <h1>빌드온</h1>
+      <span id="syncBadge" style="font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;margin-left:8px;background:#1e2c46;color:var(--sub);">…</span>
+      <div class="who" id="whoLabel" style="margin-left:auto;display:none;"></div>
+    </div>
+    <div class="role-tabs">
+      <div class="role-tab on" data-role="site">🏗️ 현장</div>
+      <div class="role-tab" data-role="vendor">🏢 협력업체</div>
+      <div class="role-tab gear" id="topManageBtn" style="padding:11px 16px;">⚙️ 설정</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===================== 소장 화면 ===================== -->
+    <section class="screen on" id="screen-site">
+
+      <!-- 탭: 발주현황 -->
+      <div class="tab-pane on" id="site-list">
+        <div class="site-row" id="siteRow"></div>
+        <div class="summary">
+          <div class="sm soon" data-filter="confirmed"><div class="n" id="cSoon">0</div><div class="l">입고 예정</div></div>
+          <div class="sm done" data-filter="done"><div class="n" id="cDone">0</div><div class="l">입고 완료</div></div>
+        </div>
+        <div class="sec-title" style="display:flex;align-items:center;gap:8px;">
+          <span id="listTitle">📋 발주 현황</span>
+          <button id="clearFilter" class="hidden" style="margin-left:auto;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--amber);font-size:11px;font-weight:800;padding:4px 10px;cursor:pointer;">✕ 전체보기</button>
+        </div>
+        <div id="orderList"></div>
+      </div>
+
+      <!-- 탭: 발주등록 -->
+      <div class="tab-pane" id="site-new">
+        <div class="sec-title">✏️ 새 발주 등록</div>
+        <div class="card">
+          <div class="field">
+            <label>현장</label>
+            <select id="fSite"></select>
+          </div>
+          <div class="field">
+            <label>자재명 (직접 입력 / 자유추가)</label>
+            <div class="mat-add">
+              <input id="fMat" list="matList" placeholder="예: PF보드 T120, 글라스울 24K…">
+              <button class="mini-btn" id="matSaveBtn">+저장</button>
+            </div>
+            <datalist id="matList"></datalist>
+            <button class="domyeon-btn" id="mgmtMatBtn" style="margin-top:8px;margin-bottom:0;background:var(--amber);border:2px solid var(--accent);color:#fff;font-weight:800;">📦 자재 목록 관리</button>
+          </div>
+          <div class="field row2">
+            <div><label>수량</label><input id="fQty" type="number" inputmode="numeric" placeholder="0"></div>
+            <div><label>단위</label>
+              <select id="fUnit"><option>장</option><option>EA</option><option>m²</option><option>m</option><option>롤</option><option>포</option><option>박스</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <label>희망 입고일</label>
+            <input id="fWant" type="date">
+          </div>
+          <div class="field">
+            <label>협력업체 / 담당자</label>
+            <select id="fVendor"></select>
+            <button class="domyeon-btn" id="mgmtVendorBtn" style="margin-top:8px;margin-bottom:0;background:var(--amber);border:2px solid var(--accent);color:#fff;font-weight:800;">⚙️ 협력업체 추가·관리</button>
+          </div>
+          <div class="field">
+            <label>요청 메모 (선택)</label>
+            <textarea id="fMemo" rows="2" placeholder="예: 1층 정문으로 입고 요청"></textarea>
+          </div>
+          <button class="btn btn-primary" id="submitOrder" style="background:var(--amber);border:2px solid var(--accent);box-shadow:0 4px 16px rgba(59,130,246,.3);">발주하기 · 협력업체로 문자 전송</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--sub);text-align:center;line-height:1.7;">
+          발주하면 협력업체 담당자에게 문자(또는 알림톡)가 가고,<br>회사가 입력한 배송일이 캘린더에 자동으로 쌓입니다.
+        </p>
+      </div>
+
+      <!-- 탭: 캘린더 -->
+      <div class="tab-pane" id="site-cal">
+        <div class="sec-title" style="display:flex;align-items:center;gap:8px;">
+          <span>📅 일정 캘린더</span>
+          <button id="addSchBtn" style="margin-left:auto;background:var(--amber);border:none;border-radius:9px;color:#fff;font-size:12px;font-weight:800;padding:7px 13px;cursor:pointer;">＋ 일정 추가</button>
+        </div>
+        <div class="card">
+          <div class="cal-head">
+            <div class="mn" id="calMonth">2026년 6월</div>
+            <div class="cal-nav"><button id="calPrev">‹</button><button id="calNext">›</button></div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend">
+            <span><i class="dot wait" style="width:7px;height:7px;border-radius:50%;background:var(--accent);"></i>대기</span>
+            <span><i class="dot confirmed" style="width:7px;height:7px;border-radius:50%;background:var(--blue);"></i>입고예정</span>
+            <span><i class="dot done" style="width:7px;height:7px;border-radius:50%;background:var(--green);"></i>입고완료</span>
+            <span><i class="dot sched" style="width:7px;height:7px;border-radius:50%;background:var(--purple);"></i>일정</span>
+          </div>
+        </div>
+        <div class="day-detail" id="dayDetail"></div>
+      </div>
+    </section>
+
+    <!-- ===================== 협력업체 화면 ===================== -->
+    <section class="screen" id="screen-vendor">
+      <div class="site-row" id="vendorCoRow" style="margin-bottom:12px;"></div>
+      <div class="sec-title">📨 들어온 발주 (배송일을 입력하세요)</div>
+      <div id="incomingList"></div>
+    </section>
+
+    <div class="toast" id="toast"></div>
+  </main>
+
+  <!-- 하단 네비 -->
+  <nav class="botnav" id="botnav">
+    <button class="on" data-pane="site-list"><span class="ic">📋</span>현황</button>
+    <button data-pane="site-new"><span class="ic">➕</span>발주</button>
+    <button data-pane="site-cal"><span class="ic">📅</span>캘린더</button>
+  </nav>
+</div>
+
+<!-- 현장 관리 모달 -->
+<div class="modal-bg" id="siteModal">
+  <div class="modal">
+    <h3>🏗️ 현장 관리</h3>
+    <div class="msub">현장을 추가하거나 삭제할 수 있어요</div>
+    <div id="siteMgmtList" style="max-height:42vh;overflow-y:auto;margin-bottom:14px;"></div>
+    <div style="border-top:1px solid var(--line);padding-top:14px;">
+      <div class="field" style="margin-bottom:10px;"><input id="nsName" placeholder="새 현장 이름 (예: 래미안 처인 2단지)"></div>
+      <button class="btn btn-green btn-sm" id="nsAdd">+ 현장 추가</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="siteClose" style="margin-top:10px;">닫기</button>
+  </div>
+</div>
+
+<!-- 담당자 관리 모달 -->
+<div class="modal-bg" id="vendorModal">
+  <div class="modal">
+    <h3>⚙️ 협력업체 관리</h3>
+    <div class="msub">발주 시 문자를 받을 협력업체 담당자입니다</div>
+    <div id="vendorMgmtList" style="max-height:42vh;overflow-y:auto;margin-bottom:14px;"></div>
+    <div style="border-top:1px solid var(--line);padding-top:14px;">
+      <div class="field" style="margin-bottom:8px;"><input id="nvCompany" placeholder="회사명 (예: 블루인슈텍)"></div>
+      <div class="field" style="margin-bottom:8px;"><input id="nvName" placeholder="담당자 이름 (예: 김과장)"></div>
+      <div class="field" style="margin-bottom:10px;"><input id="nvPhone" type="tel" inputmode="tel" placeholder="전화번호 (예: 010-1234-5678)"></div>
+      <button class="btn btn-green btn-sm" id="nvAdd">+ 협력업체 추가</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="vendorClose" style="margin-top:10px;">닫기</button>
+    <button class="btn btn-ghost btn-sm" id="resetData" style="margin-top:8px;color:var(--red);">⟳ 데이터 초기화 (기본값으로)</button>
+  </div>
+</div>
+
+<!-- 자재 목록 관리 모달 -->
+<div class="modal-bg" id="matModal">
+  <div class="modal">
+    <h3>📦 자재 목록 관리</h3>
+    <div class="msub">자주 쓰는 자재를 추가하거나 삭제할 수 있어요</div>
+    <div id="matMgmtList" style="max-height:42vh;overflow-y:auto;margin-bottom:14px;"></div>
+    <div style="border-top:1px solid var(--line);padding-top:14px;">
+      <div class="field" style="margin-bottom:10px;"><input id="nmName" placeholder="새 자재명 (예: 우레탄폼 T50)"></div>
+      <button class="btn btn-green btn-sm" id="nmAdd">+ 자재 추가</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="matClose" style="margin-top:10px;">닫기</button>
+  </div>
+</div>
+
+<!-- 발주 수정 모달 -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <h3>✏️ 발주 수정</h3>
+    <div class="msub">발주 내용을 고칠 수 있어요</div>
+    <div class="field">
+      <label>자재명</label>
+      <input id="eMat" list="matList" placeholder="자재명">
+    </div>
+    <div class="field row2">
+      <div><label>수량</label><input id="eQty" type="number" inputmode="numeric" placeholder="0"></div>
+      <div><label>단위</label>
+        <select id="eUnit"><option>장</option><option>EA</option><option>m²</option><option>m</option><option>롤</option><option>포</option><option>박스</option></select>
+      </div>
+    </div>
+    <div class="field"><label>희망 입고일</label><input id="eWant" type="date"></div>
+    <div class="field"><label>입고(배송) 확정일</label><input id="eDeliver" type="date"></div>
+    <div class="field">
+      <label>상태</label>
+      <select id="eStatus">
+        <option value="wait">발주대기</option>
+        <option value="confirmed">입고예정</option>
+        <option value="done">입고완료</option>
+      </select>
+    </div>
+    <div class="field"><label>협력업체 / 담당자</label><select id="eVendor"></select></div>
+    <div class="field"><label>요청 메모 (선택)</label><textarea id="eMemo" rows="2" placeholder="예: 1층 정문으로 입고 요청"></textarea></div>
+    <button class="btn btn-green" id="eSave" style="margin-top:4px;">💾 저장</button>
+    <button class="btn btn-ghost btn-sm" id="eCancel" style="margin-top:10px;">취소</button>
+  </div>
+</div>
+
+<!-- 캘린더 일정 등록/수정 모달 -->
+<div class="modal-bg" id="schModal">
+  <div class="modal">
+    <h3 id="schTitle">📅 일정 등록</h3>
+    <div class="msub" id="schSub">현장 일정·메모를 자유롭게 등록하세요</div>
+    <div class="field"><label>시작일</label><input id="schDate" type="date"></div>
+    <div class="field"><label>종료일 <span style="color:var(--sub);font-weight:600;">(여러 날 공사면 마지막 날)</span></label><input id="schEnd" type="date"></div>
+    <div class="field">
+      <label>종류</label>
+      <select id="schType">
+        <option value="공사">🏗️ 공사·작업</option>
+        <option value="미팅">🤝 미팅·약속</option>
+        <option value="점검">✅ 점검·검측</option>
+        <option value="기타">📌 기타</option>
+      </select>
+    </div>
+    <div class="field"><label>내용</label><input id="schTitleInput" placeholder="예: 골조 타설, 감리 점검, 자재 검수"></div>
+    <div class="field"><label>메모 (선택)</label><textarea id="schMemo" rows="2" placeholder="상세 내용"></textarea></div>
+    <button class="btn btn-green" id="schSave" style="margin-top:4px;">💾 저장</button>
+    <button class="btn btn-ghost btn-sm" id="schDelete" style="margin-top:8px;color:var(--red);display:none;">🗑️ 이 일정 삭제</button>
+    <button class="btn btn-ghost btn-sm" id="schCancel" style="margin-top:8px;">취소</button>
+  </div>
+</div>
+
+<!-- 문자 미리보기 모달 -->
+<div class="modal-bg" id="smsModal">
+  <div class="modal">
+    <h3>📩 협력업체로 발송</h3>
+    <div class="msub" id="smsTo">대성하드웨어 담당자에게 문자 전송</div>
+    <div class="sms-from">💬 빌드온 자동작성 문자</div>
+    <div class="sms-bubble" id="smsBody"></div>
+    <div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6;" id="smsRecv">받는사람: -</div>
+    <button class="btn btn-green" id="smsConfirm" style="margin-top:14px;background:var(--amber);border:2px solid var(--accent);box-shadow:0 4px 16px rgba(59,130,246,.3);">📩 발주 · 문자 보내기</button>
+    <div style="font-size:11px;color:var(--sub);text-align:center;margin-top:8px;line-height:1.5;">폰에서는 문자앱이 열리고, PC에서는 내용이 복사됩니다</div>
+    <button class="btn btn-ghost btn-sm" id="smsCancel" style="margin-top:8px;">취소</button>
+  </div>
+</div>
+
+<!-- Firebase SDK (compat 버전) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+/* ============ 저장소 ============ */
+const KEY='jajaecall_v1';
+const clone=o=>JSON.parse(JSON.stringify(o));
+const todayISO=()=>new Date().toISOString().slice(0,10);
+function plusDays(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+
+const DEFAULT={
+  sites:['이오스종합건설'],
+  materials:['PF보드 T120','PF보드 T100','비드법 단열재 2종 T100','XPS 특호 T50','글라스울 24K','층간차음재 30mm'],
+  vendors:[
+    {id:11, company:'블루인슈텍', name:'김과장', phone:'010-1234-5678'},
+    {id:12, company:'대성하드웨어', name:'박부장', phone:'010-2222-3333'},
+    {id:13, company:'한성석고', name:'이대리', phone:'010-4444-5555'},
+  ],
+  curSite:'이오스종합건설',
+  orders:[],
+  schedules:[]
+};
+
+let DB;
+// ===== 연동 모드 판별 =====
+const CLOUD_ON = !!(typeof FIREBASE_CONFIG!=='undefined' && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+let fdb=null, docRef=null, applyingRemote=false;
+
+function setBadge(state){
+  const b=document.getElementById('syncBadge');if(!b)return;
+  if(state==='cloud'){b.textContent='☁ '+CLIENT_NAME+' 연동중';b.style.background='#143020';b.style.color='var(--green)';}
+  else if(state==='connecting'){b.textContent='연결중…';b.style.background='#2a2f1a';b.style.color='var(--sub)';}
+  else if(state==='error'){b.textContent='⚠ 오프라인';b.style.background='#3a2530';b.style.color='var(--red)';}
+  else{b.textContent='📱 이 기기';b.style.background='#2a2f1a';b.style.color='var(--sub)';}
+}
+function migrate(){
+  if(!DB||typeof DB!=='object')DB=clone(DEFAULT);
+  if(!Array.isArray(DB.sites))DB.sites=clone(DEFAULT.sites);
+  if(!Array.isArray(DB.materials))DB.materials=clone(DEFAULT.materials);
+  if(!Array.isArray(DB.vendors))DB.vendors=clone(DEFAULT.vendors);
+  if(!Array.isArray(DB.orders))DB.orders=clone(DEFAULT.orders);
+  if(!Array.isArray(DB.schedules))DB.schedules=[];
+  DB.schedules.forEach(s=>{if(!s.end)s.end=s.date;});
+  if(!DB.curSite)DB.curSite=DB.sites[0]||'현장';
+}
+function loadLocal(){
+  try{DB=JSON.parse(localStorage.getItem(KEY))||clone(DEFAULT);}
+  catch(e){DB=clone(DEFAULT);}
+  migrate();
+}
+function save(){
+  if(CLOUD_ON && docRef && !applyingRemote){
+    docRef.set(clone(DB)).catch(err=>{console.error(err);toast('저장 실패 · 인터넷을 확인하세요');});
+  }
+  try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}
+}
+function renderAll(){
+  const role=document.querySelector('.role-tab.on')?.dataset.role||'site';
+  if(role==='site')renderSite(); else renderVendor();
+  if(document.querySelector('#site-cal.on'))renderCal();
+}
+function waitForFirebase(timeoutMs){
+  return new Promise(resolve=>{
+    const start=Date.now();
+    (function check(){
+      if(typeof firebase!=='undefined' && firebase.firestore){resolve(true);return;}
+      if(Date.now()-start>timeoutMs){resolve(false);return;}
+      setTimeout(check,150);
+    })();
+  });
+}
+async function initData(){
+  if(CLOUD_ON){
+    setBadge('connecting');
+    loadLocal();
+    const ready=await waitForFirebase(10000);
+    if(!ready){
+      console.error('Firebase SDK 로드 실패 (네트워크 또는 미리보기 차단)');
+      setBadge('error');toast('클라우드 SDK 로드 실패 · 이 기기 저장으로 동작');
+      return;
+    }
+    try{
+      if(!firebase.apps || !firebase.apps.length){firebase.initializeApp(FIREBASE_CONFIG);}
+      fdb=firebase.firestore();
+      docRef=fdb.collection('teams').doc(TEAM_CODE);
+      const snap=await docRef.get();
+      if(snap.exists){DB=snap.data();migrate();}
+      else{DB=clone(DEFAULT);await docRef.set(clone(DB));}
+      docRef.onSnapshot(s=>{
+        if(!s.exists)return;
+        applyingRemote=true;
+        const cur=DB&&DB.curSite;
+        DB=s.data();migrate();
+        if(cur&&DB.sites.includes(cur))DB.curSite=cur;
+        renderAll();
+        applyingRemote=false;
+      });
+      setBadge('cloud');
+      renderAll();
+      return;
+    }catch(err){
+      console.error('Firebase 연동 실패:',err);
+      setBadge('error');toast('클라우드 연결 실패 · 이 기기 저장으로 전환');
+    }
+    return;
+  }
+  loadLocal();
+  setBadge('local');
+}
+
+/* ============ 유틸 ============ */
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const STT={wait:{t:'발주대기',c:'wait'},confirmed:{t:'입고예정',c:'confirmed'},done:{t:'입고완료',c:'done'}};
+let toastTimer;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2400);}
+function fmtDate(iso){if(!iso)return '-';const d=new Date(iso);return `${d.getMonth()+1}/${d.getDate()}`;}
+function dday(iso){if(!iso)return '';const diff=Math.round((new Date(iso)-new Date(todayISO()))/86400000);if(diff===0)return '오늘';if(diff>0)return `D-${diff}`;return `D+${-diff}`;}
+
+/* ============ 역할/탭 전환 ============ */
+$$('.role-tab').forEach(t=>t.onclick=()=>{
+  // ⚙️ 설정 버튼은 탭이 아니라 현장 관리 모달을 연다
+  if(t.id==='topManageBtn'){renderSiteMgmt();$('#siteModal').classList.add('on');return;}
+  $$('.role-tab').forEach(x=>{if(x.id!=='topManageBtn')x.classList.remove('on');});t.classList.add('on');
+  const r=t.dataset.role;
+  $$('.screen').forEach(s=>s.classList.remove('on'));
+  $('#screen-'+r).classList.add('on');
+  // 하단 네비(현황·발주·캘린더)는 항상 표시
+  $('#botnav').style.display='flex';
+  if(r==='site'){$('#whoLabel').innerHTML=DB.curSite;renderSite();}
+  else{renderVendor();$('#whoLabel').innerHTML=(curVendorCo||'협력업체')+' 자재팀';}
+});
+$$('#botnav button').forEach(b=>b.onclick=()=>{
+  // 협력업체 화면에 있으면 먼저 현장 화면으로 전환
+  $$('.role-tab').forEach(x=>{if(x.id!=='topManageBtn')x.classList.remove('on');});
+  document.querySelector('.role-tab[data-role="site"]').classList.add('on');
+  $$('.screen').forEach(s=>s.classList.remove('on'));
+  $('#screen-site').classList.add('on');
+  $$('#botnav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  $$('#screen-site .tab-pane').forEach(p=>p.classList.remove('on'));
+  $('#'+b.dataset.pane).classList.add('on');
+  $('#whoLabel').innerHTML=DB.curSite;
+  if(b.dataset.pane==='site-cal')renderCal(); else renderSite();
+});
+
+/* ============ 소장: 현장 칩 ============ */
+function renderSiteRow(){
+  const row=$('#siteRow');
+  row.innerHTML=DB.sites.map(s=>`<div class="site-chip ${s===DB.curSite?'on':''}" data-s="${s}">${s}</div>`).join('');
+  row.querySelectorAll('.site-chip[data-s]').forEach(c=>c.onclick=()=>{
+    DB.curSite=c.dataset.s;orderFilter=null;save();$('#whoLabel').innerHTML=DB.curSite;renderSite();
+  });
+}
+
+/* ===== 현장 관리 - 수정·삭제 ===== */
+function renderSiteMgmt(){
+  const wrap=$('#siteMgmtList');
+  if(DB.sites.length===0){wrap.innerHTML=`<div style="color:var(--sub);font-size:13px;text-align:center;padding:16px 0;">등록된 현장이 없어요</div>`;return;}
+  wrap.innerHTML=DB.sites.map((s,i)=>{
+    const cnt=DB.orders.filter(o=>o.site===s).length;
+    return `<div class="site-mgmt-row" data-idx="${i}" style="background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;">${s} ${s===DB.curSite?'<span style="color:var(--amber);font-size:11px;">● 현재</span>':''}</div>
+          <div style="font-size:12px;color:var(--sub);margin-top:2px;">발주 ${cnt}건</div>
+        </div>
+        <button type="button" data-idx="${i}" class="siteEditBtn" style="min-width:48px;height:38px;border-radius:10px;background:#16304a;border:1px solid var(--blue);color:var(--blue);font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">수정</button>
+        <button type="button" data-idx="${i}" class="siteDelBtn" style="min-width:54px;height:38px;border-radius:10px;background:#3a2530;border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">삭제</button>
+      </div>
+      <div class="site-edit" style="display:none;gap:8px;margin-top:8px;">
+        <input class="se-input" value="${s}" placeholder="현장 이름" style="flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;font-family:inherit;">
+        <button type="button" data-idx="${i}" class="siteSaveBtn" style="min-width:54px;height:40px;border-radius:10px;background:var(--green);border:none;color:#04130d;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">저장</button>
+      </div>
+    </div>`;
+  }).join('');
+  // 수정 토글
+  wrap.querySelectorAll('.siteEditBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const box=this.closest('.site-mgmt-row').querySelector('.site-edit');
+      const open=box.style.display==='flex';
+      wrap.querySelectorAll('.site-edit').forEach(b=>b.style.display='none');
+      if(!open){box.style.display='flex';box.querySelector('.se-input').focus();}
+    });
+  });
+  // 수정 저장
+  wrap.querySelectorAll('.siteSaveBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const idx=+this.dataset.idx;
+      const inp=this.closest('.site-edit').querySelector('.se-input');
+      renameSite(idx,inp.value.trim());
+    });
+  });
+  // 삭제
+  wrap.querySelectorAll('.siteDelBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const idx=+this.dataset.idx;
+      if(this.dataset.confirm==='1'){
+        delSite(idx);
+      }else{
+        wrap.querySelectorAll('.siteDelBtn').forEach(b=>{b.textContent='삭제';b.dataset.confirm='';b.style.background='#3a2530';b.style.color='var(--red)';});
+        this.textContent='확인';
+        this.dataset.confirm='1';
+        this.style.background='var(--red)';
+        this.style.color='#fff';
+      }
+    });
+  });
+}
+function renameSite(idx,newName){
+  const old=DB.sites[idx];
+  if(old===undefined)return;
+  if(!newName){toast('현장 이름을 입력하세요');return;}
+  if(newName===old){toast('이름이 같아요');return;}
+  if(DB.sites.includes(newName)){toast('이미 있는 현장이에요');return;}
+  DB.sites[idx]=newName;
+  // 이 현장의 발주·일정 소속도 함께 변경
+  DB.orders.forEach(o=>{if(o.site===old)o.site=newName;});
+  if(Array.isArray(DB.schedules))DB.schedules.forEach(s=>{if(s.site===old)s.site=newName;});
+  if(DB.curSite===old)DB.curSite=newName;
+  orderFilter=null;save();
+  renderSiteMgmt();renderSite();fillVendorSelects();
+  $('#whoLabel').innerHTML=DB.curSite;
+  toast(`'${old}' → '${newName}' (으)로 변경됨`);
+}
+function delSite(idx){
+  const name=DB.sites[idx];
+  if(name===undefined)return;
+  DB.sites.splice(idx,1);
+  DB.orders=DB.orders.filter(o=>o.site!==name);
+  if(Array.isArray(DB.schedules))DB.schedules=DB.schedules.filter(s=>s.site!==name);
+  if(DB.curSite===name)DB.curSite=DB.sites[0]||'';
+  orderFilter=null;save();renderSiteMgmt();renderSite();fillVendorSelects();
+  toast(`'${name}' 현장을 삭제했어요`);
+}
+$('#siteClose').onclick=()=>$('#siteModal').classList.remove('on');
+$('#nsAdd').onclick=()=>{
+  const n=$('#nsName').value.trim();
+  if(!n){toast('현장 이름을 입력하세요');return;}
+  if(DB.sites.includes(n)){toast('이미 있는 현장이에요');return;}
+  DB.sites.push(n);DB.curSite=n;orderFilter=null;save();
+  $('#nsName').value='';
+  renderSiteMgmt();renderSite();fillVendorSelects();
+  toast(`'${n}' 현장 추가됨`);
+};
+
+/* ============ 소장: 발주 현황 ============ */
+let orderFilter=null;  // null=전체, 'wait'/'confirmed'/'done'
+function renderOrders(){
+  const all=DB.orders.filter(o=>o.site===DB.curSite);
+  const nSoon=all.filter(o=>o.status==='confirmed').length;
+  const nDone=all.filter(o=>o.status==='done').length;
+  $('#cSoon').textContent=nSoon;
+  $('#cDone').textContent=nDone;
+
+  // 요약 박스 선택 표시
+  $$('.sm').forEach(s=>s.classList.toggle('sel',s.dataset.filter===orderFilter));
+  // 제목/전체보기 버튼
+  const labels={wait:'발주 대기',confirmed:'입고 예정',done:'입고 완료'};
+  $('#listTitle').textContent=orderFilter?`📋 ${labels[orderFilter]}`:'📋 발주 현황';
+  $('#clearFilter').classList.toggle('hidden',!orderFilter);
+
+  // 필터 적용
+  let list = orderFilter ? all.filter(o=>o.status===orderFilter) : all;
+
+  const wrap=$('#orderList');
+  if(list.length===0){
+    wrap.innerHTML=orderFilter
+      ? `<div class="empty"><div class="big">📭</div>해당하는 발주가 없어요</div>`
+      : `<div class="empty"><div class="big">📭</div>이 현장은 아직 발주가 없어요<br>아래 ➕발주 탭에서 등록해보세요</div>`;
+    return;
+  }
+  const ord={wait:0,confirmed:1,done:2};
+  list.sort((a,b)=>ord[a.status]-ord[b.status]||(a.deliver||a.want).localeCompare(b.deliver||b.want));
+  wrap.innerHTML=list.map(o=>`
+    <div class="order st-${o.status}">
+      <div class="order-top">
+        <div class="order-mat">${o.mat}<small>${o.qty.toLocaleString()}${o.unit} · ${o.vendor}</small></div>
+        <span class="stt ${STT[o.status].c}">${STT[o.status].t}</span>
+      </div>
+      <div class="order-info">
+        <span>희망 <b>${fmtDate(o.want)}</b></span>
+        ${o.status==='wait'
+          ? `<span style="color:var(--accent)">배송일 회신 대기중</span>`
+          : `<span class="date">입고 <b>${fmtDate(o.deliver)}</b> <span style="color:var(--sub)">${dday(o.deliver)}</span></span>`}
+        ${o.status==='confirmed'?`<button class="mini-btn" style="margin-left:auto;padding:4px 10px;font-size:12px;" onclick="markDone(${o.id})">입고완료</button>`:''}
+      </div>
+      ${o.memo?`<div class="order-site">📝 ${o.memo}</div>`:''}
+      <div class="order-actions">
+        <button class="oa-btn edit" onclick="openEdit(${o.id})">✏️ 수정</button>
+        <button class="oa-btn del" data-del="${o.id}" onclick="delOrder(${o.id},this)">🗑️ 삭제</button>
+      </div>
+    </div>`).join('');
+}
+// 요약 박스 클릭 → 필터 토글
+$$('.sm').forEach(s=>s.onclick=()=>{
+  const f=s.dataset.filter;
+  orderFilter = (orderFilter===f) ? null : f;  // 같은 거 다시 누르면 해제
+  renderOrders();
+});
+$('#clearFilter').onclick=()=>{orderFilter=null;renderOrders();};
+window.markDone=function(id){
+  const o=DB.orders.find(x=>x.id===id);if(!o)return;
+  o.status='done';if(!o.deliver)o.deliver=todayISO();save();renderSite();toast('입고 완료로 변경했어요 ✅');
+};
+
+/* ===== 발주 삭제 (2번 눌러 확인) ===== */
+window.delOrder=function(id,btn){
+  if(btn && btn.dataset.confirm==='1'){
+    DB.orders=DB.orders.filter(x=>x.id!==id);save();renderSite();toast('발주를 삭제했어요 🗑️');return;
+  }
+  document.querySelectorAll('.oa-btn.del').forEach(b=>{b.textContent='🗑️ 삭제';b.dataset.confirm='';b.classList.remove('confirm');});
+  if(btn){btn.textContent='확인';btn.dataset.confirm='1';btn.classList.add('confirm');}
+};
+
+/* ===== 발주 수정 ===== */
+let editId=null;
+function fillEditVendor(sel){
+  $('#eVendor').innerHTML=DB.vendors.length
+    ? DB.vendors.map(v=>`<option value="${v.id}" ${v.company===sel?'selected':''}>${v.company} · ${v.name} (${v.phone})</option>`).join('')
+    : `<option value="">담당자 없음</option>`;
+}
+window.openEdit=function(id){
+  const o=DB.orders.find(x=>x.id===id);if(!o)return;
+  editId=id;
+  $('#eMat').value=o.mat;$('#eQty').value=o.qty;$('#eUnit').value=o.unit;
+  $('#eWant').value=o.want||'';$('#eDeliver').value=o.deliver||'';
+  $('#eStatus').value=o.status;$('#eMemo').value=o.memo||'';
+  $('#matList').innerHTML=DB.materials.map(m=>`<option value="${m}">`).join('');
+  fillEditVendor(o.vendor);
+  $('#editModal').classList.add('on');
+};
+$('#eCancel').onclick=()=>{$('#editModal').classList.remove('on');editId=null;};
+$('#eSave').onclick=()=>{
+  const o=DB.orders.find(x=>x.id===editId);if(!o)return;
+  const mat=$('#eMat').value.trim(),qty=+$('#eQty').value;
+  if(!mat){toast('자재명을 입력하세요');return;}
+  if(!qty||qty<=0){toast('수량을 입력하세요');return;}
+  o.mat=mat;o.qty=qty;o.unit=$('#eUnit').value;
+  o.want=$('#eWant').value;o.memo=$('#eMemo').value.trim();
+  o.status=$('#eStatus').value;o.deliver=$('#eDeliver').value;
+  if((o.status==='confirmed'||o.status==='done')&&!o.deliver){o.deliver=o.want||todayISO();}
+  if(o.status==='wait')o.deliver='';
+  const v=DB.vendors.find(x=>x.id==$('#eVendor').value);
+  if(v){o.vendor=v.company;o.vendorName=v.name;o.vendorPhone=v.phone;}
+  // 수정한 자재명이 목록에 없으면 추가
+  if(mat&&!DB.materials.includes(mat))DB.materials.push(mat);
+  save();$('#editModal').classList.remove('on');editId=null;
+  renderSite();toast('발주를 수정했어요 ✏️');
+};
+
+/* ============ 소장: 발주 등록 폼 ============ */
+function fillVendorSelects(){
+  $('#fSite').innerHTML=DB.sites.length
+    ? DB.sites.map(s=>`<option ${s===DB.curSite?'selected':''}>${s}</option>`).join('')
+    : `<option value="">현장을 먼저 추가하세요</option>`;
+  $('#matList').innerHTML=DB.materials.map(m=>`<option value="${m}">`).join('');
+  $('#fVendor').innerHTML=DB.vendors.length
+    ? DB.vendors.map(v=>`<option value="${v.id}">${v.company} · ${v.name} (${v.phone})</option>`).join('')
+    : `<option value="">담당자를 먼저 등록하세요</option>`;
+}
+
+/* ===== 담당자(협력업체) 관리 - 수정·삭제 ===== */
+function renderVendorMgmt(){
+  const wrap=$('#vendorMgmtList');
+  if(DB.vendors.length===0){wrap.innerHTML=`<div style="color:var(--sub);font-size:13px;text-align:center;padding:16px 0;">등록된 담당자가 없어요</div>`;return;}
+  wrap.innerHTML=DB.vendors.map(v=>`
+    <div class="vendor-mgmt-row" data-id="${v.id}" style="background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;">${v.company}</div>
+          <div style="font-size:12px;color:var(--sub);margin-top:2px;">${v.name} · ${v.phone}</div>
+        </div>
+        <a href="tel:${v.phone.replace(/-/g,'')}" style="width:38px;height:38px;border-radius:10px;background:var(--green);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px;flex-shrink:0;">📞</a>
+        <button type="button" data-id="${v.id}" class="vendorEditBtn" style="min-width:48px;height:38px;border-radius:10px;background:#16304a;border:1px solid var(--blue);color:var(--blue);font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">수정</button>
+        <button type="button" data-id="${v.id}" class="vendorDelBtn" style="min-width:54px;height:38px;border-radius:10px;background:#3a2530;border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">삭제</button>
+      </div>
+      <div class="vendor-edit" style="display:none;flex-direction:column;gap:8px;margin-top:10px;">
+        <input class="ve-company" value="${v.company}" placeholder="회사명" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;font-family:inherit;">
+        <input class="ve-name" value="${v.name}" placeholder="담당자 이름" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;font-family:inherit;">
+        <input class="ve-phone" value="${v.phone}" placeholder="전화번호" type="tel" inputmode="tel" style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;font-family:inherit;">
+        <button type="button" data-id="${v.id}" class="vendorSaveBtn" style="height:40px;border-radius:10px;background:var(--green);border:none;color:#04130d;font-size:13px;font-weight:800;cursor:pointer;">💾 저장</button>
+      </div>
+    </div>`).join('');
+  // 수정 토글
+  wrap.querySelectorAll('.vendorEditBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const box=this.closest('.vendor-mgmt-row').querySelector('.vendor-edit');
+      const open=box.style.display==='flex';
+      wrap.querySelectorAll('.vendor-edit').forEach(b=>b.style.display='none');
+      if(!open){box.style.display='flex';box.querySelector('.ve-company').focus();}
+    });
+  });
+  // 수정 저장
+  wrap.querySelectorAll('.vendorSaveBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const id=+this.dataset.id;
+      const box=this.closest('.vendor-edit');
+      const c=box.querySelector('.ve-company').value.trim();
+      const n=box.querySelector('.ve-name').value.trim();
+      const p=box.querySelector('.ve-phone').value.trim();
+      if(!c||!n||!p){toast('회사명·이름·전화번호를 모두 입력하세요');return;}
+      const v=DB.vendors.find(x=>x.id===id);if(!v)return;
+      const oldCompany=v.company;
+      v.company=c;v.name=n;v.phone=p;
+      // 기존 발주의 협력업체 정보도 함께 갱신
+      DB.orders.forEach(o=>{
+        if(o.vendorName===v.name||o.vendor===oldCompany){
+          if(o.vendor===oldCompany)o.vendor=c;
+          o.vendorName=n;o.vendorPhone=p;
+        }
+      });
+      save();renderVendorMgmt();fillVendorSelects();
+      if(typeof renderVendor==='function')renderVendor();
+      toast('협력업체 정보를 수정했어요 ✏️');
+    });
+  });
+  // 삭제
+  wrap.querySelectorAll('.vendorDelBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const id=+this.dataset.id;
+      if(this.dataset.confirm==='1'){
+        DB.vendors=DB.vendors.filter(v=>v.id!==id);save();renderVendorMgmt();fillVendorSelects();toast('담당자를 삭제했어요');
+      }else{
+        wrap.querySelectorAll('.vendorDelBtn').forEach(b=>{b.textContent='삭제';b.dataset.confirm='';b.style.background='#3a2530';b.style.color='var(--red)';});
+        this.textContent='확인';this.dataset.confirm='1';this.style.background='var(--red)';this.style.color='#fff';
+      }
+    });
+  });
+}
+$('#mgmtVendorBtn').onclick=()=>{renderVendorMgmt();$('#vendorModal').classList.add('on');};
+$('#vendorClose').onclick=()=>$('#vendorModal').classList.remove('on');
+$('#resetData').onclick=()=>{
+  if(!confirm('모든 발주·현장 데이터를 기본값으로 초기화할까요? (되돌릴 수 없어요)'))return;
+  DB=clone(DEFAULT);orderFilter=null;save();
+  $('#vendorModal').classList.remove('on');
+  renderSite();toast('기본값으로 초기화했어요');
+};
+$('#nvAdd').onclick=()=>{
+  const c=$('#nvCompany').value.trim(),n=$('#nvName').value.trim(),p=$('#nvPhone').value.trim();
+  if(!c||!n||!p){toast('회사명·이름·전화번호를 모두 입력하세요');return;}
+  DB.vendors.push({id:Date.now(),company:c,name:n,phone:p});save();
+  $('#nvCompany').value='';$('#nvName').value='';$('#nvPhone').value='';
+  renderVendorMgmt();fillVendorSelects();toast(`${c} ${n} 담당자 추가됨`);
+};
+$('#matSaveBtn').onclick=()=>{
+  const v=$('#fMat').value.trim();
+  if(!v){toast('자재명을 입력하세요');return;}
+  if(!DB.materials.includes(v)){DB.materials.push(v);save();fillVendorSelects();toast(`'${v}' 자재 목록에 저장됨`);}
+  else toast('이미 목록에 있어요');
+};
+
+/* ===== 자재 목록 관리 (수정·삭제) ===== */
+function renderMatMgmt(){
+  const wrap=$('#matMgmtList');
+  if(DB.materials.length===0){wrap.innerHTML=`<div style="color:var(--sub);font-size:13px;text-align:center;padding:16px 0;">등록된 자재가 없어요</div>`;return;}
+  wrap.innerHTML=DB.materials.map((m,i)=>`
+    <div class="mat-mgmt-row" data-idx="${i}" style="background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="mm-name" style="flex:1;min-width:0;font-size:14px;font-weight:700;">${m}</div>
+        <button type="button" data-idx="${i}" class="matEditBtn" style="min-width:48px;height:38px;border-radius:10px;background:#16304a;border:1px solid var(--blue);color:var(--blue);font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">수정</button>
+        <button type="button" data-idx="${i}" class="matDelBtn" style="min-width:54px;height:38px;border-radius:10px;background:#3a2530;border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">삭제</button>
+      </div>
+      <div class="mm-edit" style="display:none;gap:8px;margin-top:8px;">
+        <input class="mm-edit-input" value="${m}" style="flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--txt);font-size:14px;font-family:inherit;">
+        <button type="button" data-idx="${i}" class="matRenameBtn" style="min-width:54px;height:40px;border-radius:10px;background:var(--green);border:none;color:#04130d;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0;">저장</button>
+      </div>
+    </div>`).join('');
+  // 수정 토글
+  wrap.querySelectorAll('.matEditBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const box=this.closest('.mat-mgmt-row').querySelector('.mm-edit');
+      const open=box.style.display==='flex';
+      wrap.querySelectorAll('.mm-edit').forEach(b=>b.style.display='none');
+      if(!open){box.style.display='flex';box.querySelector('.mm-edit-input').focus();}
+    });
+  });
+  // 이름변경 저장
+  wrap.querySelectorAll('.matRenameBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const idx=+this.dataset.idx;
+      const inp=this.closest('.mm-edit').querySelector('.mm-edit-input');
+      renameMaterial(idx,inp.value.trim());
+    });
+  });
+  // 삭제
+  wrap.querySelectorAll('.matDelBtn').forEach(btn=>{
+    btn.addEventListener('click',function(e){
+      e.preventDefault();e.stopPropagation();
+      const idx=+this.dataset.idx;
+      if(this.dataset.confirm==='1'){
+        DB.materials.splice(idx,1);save();renderMatMgmt();fillVendorSelects();toast('자재를 삭제했어요');
+      }else{
+        wrap.querySelectorAll('.matDelBtn').forEach(b=>{b.textContent='삭제';b.dataset.confirm='';b.style.background='#3a2530';b.style.color='var(--red)';});
+        this.textContent='확인';this.dataset.confirm='1';this.style.background='var(--red)';this.style.color='#fff';
+      }
+    });
+  });
+}
+function renameMaterial(idx,newName){
+  const old=DB.materials[idx];
+  if(old===undefined)return;
+  if(!newName){toast('자재명을 입력하세요');return;}
+  if(newName===old){toast('이름이 같아요');return;}
+  if(DB.materials.includes(newName)){toast('이미 있는 자재예요');return;}
+  DB.materials[idx]=newName;
+  // 기존 발주의 자재명도 함께 변경
+  DB.orders.forEach(o=>{if(o.mat===old)o.mat=newName;});
+  save();renderMatMgmt();fillVendorSelects();renderOrders();
+  toast(`'${old}' → '${newName}' (으)로 변경됨`);
+}
+{const _mb=$('#mgmtMatBtn');if(_mb)_mb.onclick=()=>{renderMatMgmt();$('#matModal').classList.add('on');};}
+$('#matClose').onclick=()=>$('#matModal').classList.remove('on');
+$('#nmAdd').onclick=()=>{
+  const n=$('#nmName').value.trim();
+  if(!n){toast('자재명을 입력하세요');return;}
+  if(DB.materials.includes(n)){toast('이미 있는 자재예요');return;}
+  DB.materials.push(n);save();$('#nmName').value='';
+  renderMatMgmt();fillVendorSelects();toast(`'${n}' 자재 추가됨`);
+};
+
+let pendingOrder=null, pendingVendor=null;
+$('#submitOrder').onclick=()=>{
+  const mat=$('#fMat').value.trim(),qty=+$('#fQty').value,want=$('#fWant').value;
+  const vId=$('#fVendor').value;
+  if(!$('#fSite').value){toast('현장을 먼저 추가하세요');return;}
+  if(!vId){toast('협력업체 담당자를 먼저 등록하세요');return;}
+  if(!mat){toast('자재명을 입력하세요');return;}
+  if(!qty||qty<=0){toast('수량을 입력하세요');return;}
+  if(!want){toast('희망 입고일을 선택하세요');return;}
+  const vendor=DB.vendors.find(v=>v.id==vId);
+  pendingVendor=vendor;
+  pendingOrder={
+    id:Date.now(), site:$('#fSite').value, mat, qty, unit:$('#fUnit').value,
+    vendor:vendor.company, vendorName:vendor.name, vendorPhone:vendor.phone,
+    want, memo:$('#fMemo').value.trim(),
+    status:'confirmed', deliver:want, created:'방금'
+  };
+  // 문자 미리보기
+  $('#smsTo').textContent=`${vendor.company} ${vendor.name}님에게 문자 전송`;
+  $('#smsRecv').textContent=`받는사람: ${vendor.name} (${vendor.phone})`;
+  $('#smsBody').textContent=
+`[자재 발주 요청 / ${pendingOrder.site}]
+자재: ${pendingOrder.mat}
+수량: ${qty.toLocaleString()}${pendingOrder.unit}
+희망입고: ${want}${pendingOrder.memo?'\n메모: '+pendingOrder.memo:''}
+
+배송 가능일 회신 부탁드립니다.
+- ${pendingOrder.site} 현장`;
+  $('#smsModal').classList.add('on');
+};
+$('#smsCancel').onclick=()=>{$('#smsModal').classList.remove('on');pendingOrder=null;};
+$('#smsConfirm').onclick=()=>{
+  if(!pendingOrder)return;
+  DB.orders.unshift(pendingOrder);save();
+  const phone=(pendingVendor?pendingVendor.phone:'').replace(/-/g,'');
+  const body=$('#smsBody').textContent;
+  const ua=navigator.userAgent;
+  const isMobile=/iPad|iPhone|iPod|Android/i.test(ua);
+  $('#smsModal').classList.remove('on');
+  // 폼 초기화
+  $('#fMat').value='';$('#fQty').value='';$('#fMemo').value='';$('#fWant').value='';
+  pendingOrder=null;
+  // 현황 탭으로 이동
+  $$('#botnav button').forEach(x=>x.classList.remove('on'));
+  document.querySelector('#botnav button[data-pane="site-list"]').classList.add('on');
+  $$('#screen-site .tab-pane').forEach(p=>p.classList.remove('on'));
+  $('#site-list').classList.add('on');
+  renderSite();
+
+  if(isMobile){
+    // 폰: 문자앱 열기
+    const isIOS=/iPad|iPhone|iPod/.test(ua);
+    const sep=isIOS?'&':'?';
+    toast('발주 등록 완료! 문자앱을 엽니다 📩');
+    setTimeout(()=>{location.href=`sms:${phone}${sep}body=${encodeURIComponent(body)}`;},300);
+  }else{
+    // PC: 문자앱이 없으므로 내용 복사
+    const full=`받는사람: ${pendingVendor?pendingVendor.phone:''}\n\n${body}`;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(full).then(()=>{
+        toast('발주 등록 완료! PC라서 문자 내용을 복사했어요 📋');
+      }).catch(()=>{toast('발주 등록 완료! (폰에서 열면 문자앱이 떠요)');});
+    }else{
+      toast('발주 등록 완료! 폰에서 열면 문자앱이 자동으로 떠요');
+    }
+  }
+  pendingVendor=null;
+};
+
+/* ============ 캘린더 ============ */
+let calY,calM;
+let selDayIso=todayISO();      // 마지막으로 선택한 날짜
+function initCalDate(){const d=new Date();calY=d.getFullYear();calM=d.getMonth();}
+const SCH_ICON={공사:'🏗️',미팅:'🤝',점검:'✅',기타:'📌'};
+function renderCal(){
+  $('#calMonth').textContent=`${calY}년 ${calM+1}월`;
+  const grid=$('#calGrid');
+  const dows=['일','월','화','수','목','금','토'];
+  let html=dows.map((d,i)=>`<div class="cal-dow ${i===0?'sun':i===6?'sat':''}">${d}</div>`).join('');
+  const first=new Date(calY,calM,1).getDay();
+  const days=new Date(calY,calM+1,0).getDate();
+  for(let i=0;i<first;i++)html+=`<div class="cal-cell empty"></div>`;
+  const list=DB.orders.filter(o=>o.site===DB.curSite);
+  const schs=DB.schedules.filter(s=>s.site===DB.curSite);
+  const schOnDay=iso=>schs.filter(s=>{const a=s.date,b=s.end||s.date;return iso>=a&&iso<=b;});
+  for(let d=1;d<=days;d++){
+    const iso=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayOrders=list.filter(o=>(o.deliver||o.want)===iso);
+    const daySchs=schOnDay(iso);
+    const isToday=iso===todayISO();
+    let dots=[...new Set(dayOrders.map(o=>o.status))].map(s=>`<span class="dot ${s}"></span>`).join('');
+    if(daySchs.length)dots+=`<span class="dot sched"></span>`;
+    const has=dayOrders.length||daySchs.length;
+    html+=`<div class="cal-cell ${has?'has':''} ${isToday?'today':''}" data-iso="${iso}">
+      <span class="dnum">${d}</span><div class="cal-dots">${dots}</div></div>`;
+  }
+  grid.innerHTML=html;
+  grid.querySelectorAll('.cal-cell[data-iso]').forEach(c=>c.onclick=()=>showDay(c.dataset.iso,c));
+  // 선택 표시 유지
+  const selCell=grid.querySelector(`.cal-cell[data-iso="${selDayIso}"]`);
+  if(selCell)showDay(selDayIso,selCell); else $('#dayDetail').innerHTML='';
+}
+function showDay(iso,cell){
+  selDayIso=iso;
+  $$('.cal-cell').forEach(c=>c.classList.remove('sel'));if(cell)cell.classList.add('sel');
+  const orders=DB.orders.filter(o=>o.site===DB.curSite&&(o.deliver||o.want)===iso);
+  const schs=DB.schedules.filter(s=>s.site===DB.curSite&&iso>=s.date&&iso<=(s.end||s.date));
+  const d=new Date(iso);
+  let h=`<div class="dh" style="display:flex;align-items:center;gap:8px;">
+    <span>${d.getMonth()+1}월 ${d.getDate()}일</span>
+    <button onclick="openSchedule(null,'${iso}')" style="margin-left:auto;background:var(--amber);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:800;padding:5px 10px;cursor:pointer;">＋ 일정</button>
+  </div>`;
+  if(orders.length===0&&schs.length===0){
+    h+=`<div class="day-empty">이 날짜에 등록된 입고·일정이 없어요</div>`;
+  }else{
+    // 발주(입고) 항목
+    h+=orders.map(o=>`
+      <div class="order st-${o.status}">
+        <div class="order-top"><div class="order-mat">${o.mat}<small>${o.qty.toLocaleString()}${o.unit} · ${o.vendor}</small></div>
+        <span class="stt ${STT[o.status].c}">${STT[o.status].t}</span></div>
+      </div>`).join('');
+    // 직접 등록 일정
+    h+=schs.map(s=>{
+      const multi=s.end&&s.end!==s.date;
+      const period=multi?` · ${fmtDate(s.date)}~${fmtDate(s.end)}`:'';
+      return `
+      <div class="order" style="cursor:pointer;" onclick="openSchedule(${s.id})">
+        <div class="order-top">
+          <div class="order-mat">${SCH_ICON[s.type]||'📌'} ${s.title}<small>${s.type}${period}${s.memo?' · '+s.memo:''}</small></div>
+          <span class="stt" style="background:#2a2350;color:var(--purple);">${multi?'공사기간':'일정'}</span>
+        </div>
+      </div>`;}).join('');
+  }
+  $('#dayDetail').innerHTML=h;
+}
+$('#calPrev').onclick=()=>{calM--;if(calM<0){calM=11;calY--;}renderCal();};
+$('#calNext').onclick=()=>{calM++;if(calM>11){calM=0;calY++;}renderCal();};
+
+/* ===== 일정 등록/수정/삭제 ===== */
+let schEditId=null;
+$('#addSchBtn').onclick=()=>openSchedule(null, selDayIso||todayISO());
+window.openSchedule=function(id, dateIso){
+  if(id){
+    const s=DB.schedules.find(x=>x.id===id);if(!s)return;
+    schEditId=id;
+    $('#schTitle').textContent='✏️ 일정 수정';
+    $('#schDate').value=s.date;$('#schEnd').value=s.end||s.date;$('#schType').value=s.type;
+    $('#schTitleInput').value=s.title;$('#schMemo').value=s.memo||'';
+    $('#schDelete').style.display='block';
+  }else{
+    schEditId=null;
+    $('#schTitle').textContent='📅 일정 등록';
+    $('#schDate').value=dateIso||todayISO();$('#schEnd').value=dateIso||todayISO();$('#schType').value='공사';
+    $('#schTitleInput').value='';$('#schMemo').value='';
+    $('#schDelete').style.display='none';
+  }
+  $('#schModal').classList.add('on');
+};
+$('#schCancel').onclick=()=>{$('#schModal').classList.remove('on');schEditId=null;};
+$('#schSave').onclick=()=>{
+  const date=$('#schDate').value, type=$('#schType').value;
+  let end=$('#schEnd').value;
+  const title=$('#schTitleInput').value.trim(), memo=$('#schMemo').value.trim();
+  if(!date){toast('시작일을 선택하세요');return;}
+  if(!title){toast('일정 내용을 입력하세요');return;}
+  if(end&&end<date){toast('종료일이 시작일보다 빠릅니다');return;}
+  if(!end)end=date;
+  if(schEditId){
+    const s=DB.schedules.find(x=>x.id===schEditId);
+    if(s){s.date=date;s.end=end;s.type=type;s.title=title;s.memo=memo;}
+    toast('일정을 수정했어요 ✏️');
+  }else{
+    DB.schedules.push({id:Date.now(),site:DB.curSite,date,end,type,title,memo});
+    toast('일정을 등록했어요 📅');
+  }
+  selDayIso=date;save();$('#schModal').classList.remove('on');schEditId=null;renderCal();
+};
+$('#schDelete').onclick=()=>{
+  if(!schEditId)return;
+  DB.schedules=DB.schedules.filter(x=>x.id!==schEditId);
+  save();$('#schModal').classList.remove('on');schEditId=null;renderCal();toast('일정을 삭제했어요 🗑️');
+};
+
+/* ============ 협력업체 화면 ============ */
+let curVendorCo=null;  // 현재 선택된 협력업체명
+function vendorCompanies(){
+  // 등록된 담당자 + 기존 발주에 쓰인 회사명을 합쳐 중복 제거
+  const set=new Set();
+  DB.vendors.forEach(v=>set.add(v.company));
+  DB.orders.forEach(o=>{if(o.vendor)set.add(o.vendor);});
+  return [...set];
+}
+function renderVendorCoRow(){
+  const cos=vendorCompanies();
+  const row=$('#vendorCoRow');
+  if(cos.length===0){row.innerHTML='';curVendorCo=null;return;}
+  if(!curVendorCo||!cos.includes(curVendorCo))curVendorCo=cos[0];
+  row.innerHTML=cos.map(c=>{
+    const n=DB.orders.filter(o=>o.vendor===c&&o.status==='wait').length;
+    return `<div class="site-chip ${c===curVendorCo?'on':''}" data-co="${c}">${c}${n?` <span style="opacity:.85">(${n})</span>`:''}</div>`;
+  }).join('');
+  row.querySelectorAll('.site-chip[data-co]').forEach(c=>c.onclick=()=>{
+    curVendorCo=c.dataset.co;renderVendor();
+  });
+}
+function renderVendor(){
+  renderVendorCoRow();
+  const wrap=$('#incomingList');
+  if(!curVendorCo){wrap.innerHTML=`<div class="empty"><div class="big">🏢</div>등록된 협력업체가 없어요<br>현장 → ➕발주 → ⚙️협력업체 관리에서 추가하세요</div>`;return;}
+  // 선택한 회사로 들어온 발주 (모든 현장)
+  const list=DB.orders.filter(o=>o.vendor===curVendorCo);
+  if(list.length===0){wrap.innerHTML=`<div class="empty"><div class="big">📭</div><b>${curVendorCo}</b>(으)로 들어온 발주가 없어요</div>`;return;}
+  const ord={wait:0,confirmed:1,done:2};
+  list.sort((a,b)=>ord[a.status]-ord[b.status]);
+  wrap.innerHTML=list.map(o=>{
+    if(o.status==='wait'){
+      return `<div class="incoming" data-id="${o.id}">
+        <div class="inc-top"><span class="inc-tag">새 발주</span><span class="inc-time">${o.created}</span></div>
+        <div class="inc-mat">${o.mat}</div>
+        <div class="inc-meta">${o.site}<br><b>${o.qty.toLocaleString()}${o.unit}</b> · 희망입고 <b>${o.want}</b>${o.memo?'<br>📝 '+o.memo:''}</div>
+        <div class="inc-form">
+          <input type="date" id="dv-${o.id}" value="${o.want}">
+          <button class="btn btn-green btn-sm" style="width:auto;padding:11px 16px;" onclick="setDeliver(${o.id})">배송일 확정</button>
+        </div>
+      </div>`;
+    }else{
+      return `<div class="incoming answered">
+        <div class="inc-top"><span class="inc-tag ${o.status==='done'?'done':''}">${o.status==='done'?'입고완료':'회신완료'}</span><span class="inc-time">${o.created}</span></div>
+        <div class="inc-mat">${o.mat}</div>
+        <div class="inc-meta">${o.site} · <b>${o.qty.toLocaleString()}${o.unit}</b></div>
+        <div class="inc-answered-line">🚚 배송일 ${o.deliver} 으로 회신함 (${dday(o.deliver)})</div>
+      </div>`;
+    }
+  }).join('');
+}
+window.setDeliver=function(id){
+  const o=DB.orders.find(x=>x.id===id);if(!o)return;
+  const v=$('#dv-'+id).value;
+  if(!v){toast('배송일을 선택하세요');return;}
+  o.deliver=v;o.status='confirmed';save();
+  renderVendor();
+  toast(`✅ 배송일 ${v} 회신 · 소장 캘린더에 자동 반영됐어요`);
+};
+
+/* ============ 렌더 ============ */
+function renderSite(){renderSiteRow();renderOrders();fillVendorSelects();}
+async function boot(){
+  initCalDate();
+  if(!$('#fWant').value)$('#fWant').value=plusDays(3);
+  await initData();     // Firebase 연동 or 로컬 로드
+  renderSite();
+}
+boot();
+</script>
+</body>
+</html>
